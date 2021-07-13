@@ -1,0 +1,13 @@
+{
+    "name": "24WC16",
+    "description": "Catalyst 24WC16 EEPROM interfacing library.",
+    "keywords": "eeprom,24wc16,catalyst,i2c,twi",
+    "version": "1.0.0",
+    "repository": {
+        "type": "git",
+        "url": "tbd"
+    },
+    "dependencies": {
+        "Wire": "1.0"
+    }
+}
