@@ -13,13 +13,14 @@
 extern "C" {
 #endif
 
-void EEP_24WC16_Initialize(void);
 uint8_t EEP_24WC16_GetFailureReason(void);
 
 bool EEP_24WC16_ReadByte(uint16_t addr, uint8_t* value);
+bool EEP_24WC16_ReadImmediate(uint8_t* value);
+bool EEP_24WC16_ReadSequential(uint16_t addr, uint8_t* buffer, uint16_t len);
 
 bool EEP_24WC16_WriteByte(uint16_t addr, uint8_t value);
-bool EEP_24WC16_WriteBurst(uint16_t addr, uint8_t* values, uint8_t len);
+bool EEP_24WC16_WriteBurst(uint16_t addr, uint8_t* buffer, uint8_t len);
 
 #ifdef __cplusplus
 }
