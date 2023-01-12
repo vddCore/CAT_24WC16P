@@ -50,18 +50,96 @@ bool EEP_24WC16_ReadByte(uint16_t addr, uint8_t* value) {
     return false;
   }
 
-  uint8_t ret = twi_readFrom(
+  uint8_t read_len = twi_readFrom(
     i2c_addr_read,
     value,
     (uint8_t)1,
     (uint8_t)1
   );
 
-  if (!ret) {
+  if (!read_len) {
     g_failure_reason = E_TWI_READ_FAILED;
     return false;
   }
 
+  return true;
+}
+
+// Attempts to read an immediate byte
+// using chip's internal address counter.
+bool EEP_24WC16_ReadImmediate(uint8_t* value) {
+  if (!TWCR) {
+    g_failure_reason = E_TWI_NOT_INITIALIZED;
+    return false;
+  }
+
+  uint8_t i2c_addr_read = EEP_24WC16_MakePhysicalAddress(0, false);
+
+  uint8_t read_len = twi_readFrom(
+    i2c_addr_read,
+    value,
+    (uint8_t)1,
+    (uint8_t)1
+  );
+
+  if (!read_len) {
+    g_failure_reason = E_TWI_READ_FAILED;
+    return false;
+  }
+
+  return true;
+}
+
+// Attempts to read a sequence of bytes in one go
+// starting at the provided address.
+bool EEP_24WC16_ReadSequential(uint16_t addr, uint8_t* buffer, uint16_t len) {
+  if (!TWCR) {
+    g_failure_reason = E_TWI_NOT_INITIALIZED;
+    return false;
+  }
+
+  if (addr >= EEP_24WC16_CHIP_SIZE) {
+    g_failure_reason = E_ADDR_OUT_OF_BOUNDS;
+    return false;
+  }
+
+  if (len >= EEP_24WC16_CHIP_SIZE) {
+    g_failure_reason = E_BURST_TOO_LONG;
+    return false;
+  }
+
+  uint8_t i2c_addr_sel = EEP_24WC16_MakePhysicalAddress(addr, true);
+  uint8_t i2c_addr_read = EEP_24WC16_MakePhysicalAddress(addr, false);
+  uint8_t addr_in_page = (uint8_t)(addr % EEP_24WC16_PAGE_SIZE);
+
+  g_failure_reason = twi_writeTo(
+    i2c_addr_sel,
+    &addr_in_page, 
+    (uint8_t)1, 
+    (uint8_t)1, 
+    (uint8_t)0
+  );
+
+  if (g_failure_reason) {
+    return false;
+  }
+
+  uint8_t val;
+  for (uint16_t i = 0; i < len; i++) {
+    uint8_t read_len = twi_readFrom(
+      i2c_addr_read,
+      &val,
+      (uint8_t)1,
+      (uint8_t)1
+    );
+
+    if (!read_len) {
+      g_failure_reason = E_TWI_READ_FAILED;
+      return false;
+    }
+
+    buffer[i] = val;
+  }
   return true;
 }
 
@@ -102,10 +180,10 @@ bool EEP_24WC16_WriteByte(uint16_t addr, uint8_t value) {
   return true;
 }
 
-// Attempts to write a 16-byte long block of
-// data using the chip's page write feature
+// Attempts to write a block of data
+// using the chip's page write feature
 // starting at the provided linear address.
-bool EEP_24WC16_WriteBurst(uint16_t addr, uint8_t* values, uint8_t len) {
+bool EEP_24WC16_WriteBurst(uint16_t addr, uint8_t* buffer, uint8_t len) {
   if (!TWCR) {
     g_failure_reason = E_TWI_NOT_INITIALIZED;
     return false;
@@ -126,7 +204,7 @@ bool EEP_24WC16_WriteBurst(uint16_t addr, uint8_t* values, uint8_t len) {
 
   uint8_t cmd[17] = { 0 };
   cmd[0] = addr_in_page;
-  memcpy(cmd + 1, values, len);
+  memcpy(cmd + 1, buffer, len);
 
   g_failure_reason = twi_writeTo(
     i2c_addr_wr,
